@@ -4,6 +4,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.math.BigDecimal;
 
 public class TransferenciaPixFrame extends JFrame {
 
@@ -61,27 +62,37 @@ public class TransferenciaPixFrame extends JFrame {
                     return;
                 }
 
-                double valor;
+                // Aceita "10,50" ou "10.50"; dinheiro em BigDecimal, nunca em double.
+                BigDecimal valor;
                 try {
-                    valor = Double.parseDouble(valorStr);
-                    if (valor <= 0) {
-                        JOptionPane.showMessageDialog(null, "Valor deve ser maior que zero.");
-                        return;
-                    }
+                    valor = new BigDecimal(valorStr.replace(",", "."));
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(null, "Digite um valor numérico válido.");
                     return;
                 }
+                if (valor.signum() <= 0) {
+                    JOptionPane.showMessageDialog(null, "Valor deve ser maior que zero.");
+                    return;
+                }
+                if (valor.scale() > 2) {
+                    JOptionPane.showMessageDialog(null, "Use no máximo duas casas decimais.");
+                    return;
+                }
 
                 TransacaoPixDAO dao = new TransacaoPixDAO();
-                boolean sucesso = dao.realizarTransferenciaPix(usuarioLogado.getId(), chaveDestino, valor);
+                TransacaoPixDAO.Resultado resultado =
+                        dao.realizarTransferenciaPix(usuarioLogado.getId(), chaveDestino, valor);
 
-                if (sucesso) {
-                    JOptionPane.showMessageDialog(null, "Transferência realizada com sucesso!");
-                    txtChavePixDestino.setText("");
-                    txtValor.setText("");
-                } else {
-                    JOptionPane.showMessageDialog(null, "Erro ao realizar transferência.");
+                switch (resultado) {
+                    case SUCESSO -> {
+                        JOptionPane.showMessageDialog(null, "Transferência realizada com sucesso!");
+                        txtChavePixDestino.setText("");
+                        txtValor.setText("");
+                    }
+                    case CHAVE_NAO_ENCONTRADA -> JOptionPane.showMessageDialog(null, "Chave Pix não encontrada.");
+                    case MESMA_CONTA -> JOptionPane.showMessageDialog(null, "Não é possível transferir para a própria conta.");
+                    case SALDO_INSUFICIENTE -> JOptionPane.showMessageDialog(null, "Saldo insuficiente.");
+                    default -> JOptionPane.showMessageDialog(null, "Erro ao realizar transferência. Tente novamente.");
                 }
             }
         });

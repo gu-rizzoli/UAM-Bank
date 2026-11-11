@@ -21,7 +21,7 @@ public class TelaPrincipalFrame extends JFrame {
         lblBemVindo = new JLabel("Bem-vindo, " + usuario.getNome(), SwingConstants.CENTER);
         add(lblBemVindo);
 
-        lblSaldo = new JLabel("Saldo: R$ " + String.format("%.2f", buscarSaldo()), SwingConstants.CENTER);
+        lblSaldo = new JLabel("Saldo: R$ " + String.format("%,.2f", buscarSaldo()), SwingConstants.CENTER);
         add(lblSaldo);
 
         btnCadastrarChave = new JButton("Cadastrar Chave Pix");
@@ -68,7 +68,7 @@ public class TelaPrincipalFrame extends JFrame {
         });
     }
 
-    private double buscarSaldo() {
+    private java.math.BigDecimal buscarSaldo() {
         ContaDAO dao = new ContaDAO();
         return dao.obterSaldo(usuario.getId());
     }

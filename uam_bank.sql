@@ -14,10 +14,11 @@ CREATE TABLE usuario (
 -- Tabela: conta
 CREATE TABLE conta (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    id_usuario INT NOT NULL,
+    id_usuario INT NOT NULL UNIQUE,
     numero_conta VARCHAR(20) NOT NULL UNIQUE,
     agencia VARCHAR(10) NOT NULL DEFAULT '0001',
-    saldo DECIMAL(10,2) DEFAULT 0.00,
+    saldo DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    CHECK (saldo >= 0),
     FOREIGN KEY (id_usuario) REFERENCES usuario(id) ON DELETE CASCADE
 );
 
@@ -37,6 +38,7 @@ CREATE TABLE transacao_pix (
     destinatario_id INT NOT NULL,
     valor DECIMAL(10,2) NOT NULL,
     data_hora DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CHECK (valor > 0),
     FOREIGN KEY (remetente_id) REFERENCES usuario(id),
     FOREIGN KEY (destinatario_id) REFERENCES usuario(id)
 );

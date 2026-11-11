@@ -1,70 +1,54 @@
 package bancopix;
 
+import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.sql.*;
 
 public class ContaDAO {
 
-    public void criarContaParaUsuario(int idUsuario) {
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final int TENTATIVAS_NUMERO_CONTA = 5;
+
+    /**
+     * Abre a conta do usuário usando a conexão (e a transação) de quem chamou.
+     * Se o número sorteado já existir, sorteia outro.
+     */
+    public void criarContaParaUsuario(Connection conn, int idUsuario) throws SQLException {
         String sql = "INSERT INTO conta (id_usuario, numero_conta, saldo) VALUES (?, ?, 0.00)";
-        String numeroConta = String.format("%08d", (int)(Math.random() * 100_000_000));
 
-        try (Connection conn = ConexaoBD.conectar();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, idUsuario);
-            stmt.setString(2, numeroConta);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Erro ao criar conta: " + e.getMessage());
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            for (int tentativa = 1; ; tentativa++) {
+                stmt.setInt(1, idUsuario);
+                stmt.setString(2, String.format("%08d", RANDOM.nextInt(100_000_000)));
+                Savepoint antes = conn.setSavepoint();
+                try {
+                    stmt.executeUpdate();
+                    return;
+                } catch (SQLIntegrityConstraintViolationException e) {
+                    conn.rollback(antes);
+                    if (tentativa == TENTATIVAS_NUMERO_CONTA) {
+                        throw e;
+                    }
+                }
+            }
         }
     }
 
-    public double obterSaldo(int idUsuario) {
+    public BigDecimal obterSaldo(int idUsuario) {
         String sql = "SELECT saldo FROM conta WHERE id_usuario = ?";
 
         try (Connection conn = ConexaoBD.conectar();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, idUsuario);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getDouble("saldo");
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getBigDecimal("saldo");
+                }
             }
         } catch (SQLException e) {
             System.out.println("Erro ao obter saldo: " + e.getMessage());
         }
-        return 0.0;
-    }
-
-    public void atualizarSaldo(int idUsuario, double novoSaldo) {
-        String sql = "UPDATE conta SET saldo = ? WHERE id_usuario = ?";
-
-        try (Connection conn = ConexaoBD.conectar();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setDouble(1, novoSaldo);
-            stmt.setInt(2, idUsuario);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Erro ao atualizar saldo: " + e.getMessage());
-        }
-    }
-
-    public int buscarIdUsuarioPorChavePix(String chavePix) {
-        String sql = "SELECT u.id FROM usuario u JOIN chave_pix c ON u.id = c.id_usuario WHERE c.chave = ?";
-
-        try (Connection conn = ConexaoBD.conectar();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, chavePix);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getInt("id");
-            }
-        } catch (SQLException e) {
-            System.out.println("Erro ao buscar usuário pela chave PIX: " + e.getMessage());
-        }
-
-        return -1;
+        return BigDecimal.ZERO;
     }
 }

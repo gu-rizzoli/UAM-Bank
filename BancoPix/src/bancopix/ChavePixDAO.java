@@ -8,13 +8,14 @@ import java.sql.SQLException;
 public class ChavePixDAO {
 
     public boolean chaveJaExiste(String chave) {
-        String sql = "SELECT * FROM chave_pix WHERE chave = ?";
+        String sql = "SELECT 1 FROM chave_pix WHERE chave = ?";
         try (Connection conn = ConexaoBD.conectar();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, chave);
-            ResultSet rs = stmt.executeQuery();
-            return rs.next(); // true se já existe
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next(); // true se já existe
+            }
         } catch (SQLException e) {
             System.out.println("Erro ao verificar chave Pix: " + e.getMessage());
             return true;
